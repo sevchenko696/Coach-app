@@ -131,7 +131,17 @@ CREATE TABLE daily_checkins (
 -- Create bucket: 'recordings' for video uploads
 -- Set both buckets to public for easy URL access
 
+-- Push notification tokens
+CREATE TABLE push_tokens (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  platform TEXT NOT NULL CHECK (platform IN ('ios', 'android')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- RLS Policies (disable RLS for simplicity in V0, use service role key server-side)
+ALTER TABLE push_tokens DISABLE ROW LEVEL SECURITY;
 ALTER TABLE batches DISABLE ROW LEVEL SECURITY;
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_content DISABLE ROW LEVEL SECURITY;

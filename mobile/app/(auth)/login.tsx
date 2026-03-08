@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useAuth } from '../../contexts/AuthContext'
+import { hapticSelection, hapticSuccess } from '../../services/haptics'
+import { hasOnboarded } from '../onboarding'
 import { normalizePhone } from '../../shared'
 import { colors, spacing, fontSize, borderRadius, elementSize } from '../../constants/theme'
 import ContentContainer from '../../components/ContentContainer'
@@ -42,7 +44,11 @@ export default function LoginScreen() {
     setLoading(true)
     try {
       const { firstLogin } = await login(normalized, loginPassword)
-      if (firstLogin) {
+      hapticSuccess()
+      const onboarded = await hasOnboarded()
+      if (firstLogin && !onboarded) {
+        router.replace('/onboarding')
+      } else if (firstLogin) {
         router.replace('/(tabs)/profile')
       } else {
         router.replace('/(tabs)')
@@ -87,13 +93,13 @@ export default function LoginScreen() {
             <View style={styles.toggleContainer}>
               <TouchableOpacity
                 style={[styles.toggleBtn, !isFirstTime && styles.toggleActive]}
-                onPress={() => setIsFirstTime(false)}
+                onPress={() => { setIsFirstTime(false); hapticSelection() }}
               >
                 <Text style={[styles.toggleText, !isFirstTime && styles.toggleTextActive]}>Returning User</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.toggleBtn, isFirstTime && styles.toggleActive]}
-                onPress={() => setIsFirstTime(true)}
+                onPress={() => { setIsFirstTime(true); hapticSelection() }}
               >
                 <Text style={[styles.toggleText, isFirstTime && styles.toggleTextActive]}>First Time</Text>
               </TouchableOpacity>
@@ -148,6 +154,8 @@ export default function LoginScreen() {
                 style={[styles.button, loading && styles.buttonDisabled]}
                 onPress={handleLogin}
                 disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel={loading ? 'Signing in' : 'Sign in'}
               >
                 <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
               </TouchableOpacity>

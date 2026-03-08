@@ -8,13 +8,20 @@ import {
   RefreshControl,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { apiFetch } from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
+import { hapticSuccess } from '../../services/haptics'
 import { colors, spacing, fontSize, borderRadius, elementSize } from '../../constants/theme'
 import ContentContainer from '../../components/ContentContainer'
+import { ProfileSkeleton } from '../../components/Skeleton'
+import ErrorState from '../../components/ErrorState'
+import { useAppResume } from '../../hooks/useAppResume'
 import { contentPadding } from '../../constants/responsive'
 
 interface UserProfile {
@@ -30,7 +37,9 @@ interface UserProfile {
 
 export default function ProfileScreen() {
   const { logout, refresh } = useAuth()
+  const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [userData, setUserData] = useState<UserProfile | null>(null)
   const [name, setName] = useState('')
@@ -43,17 +52,19 @@ export default function ProfileScreen() {
 
   const fetchData = useCallback(async () => {
     try {
+      setError(false)
       const data = await apiFetch<{ user: UserProfile }>('/api/auth/me')
       setUserData(data.user)
       setName(data.user.name)
     } catch {
-      // silent
+      setError(true)
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useAppResume(fetchData)
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -84,7 +95,8 @@ export default function ProfileScreen() {
         method: 'PUT',
         body: JSON.stringify(body),
       })
-      Alert.alert('Success', 'Profile updated!')
+      showToast('Profile updated successfully!')
+      hapticSuccess()
       setPassword('')
       setConfirmPassword('')
       await refresh()
@@ -109,6 +121,10 @@ export default function ProfileScreen() {
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.scroll}
+      >
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -117,9 +133,7 @@ export default function ProfileScreen() {
       >
         <ContentContainer>
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading...</Text>
-          </View>
+          <ProfileSkeleton />
         ) : userData ? (
           <>
             {/* Password warning */}
@@ -228,12 +242,11 @@ export default function ProfileScreen() {
             <View style={{ height: spacing['2xl'] }} />
           </>
         ) : (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Unable to load profile</Text>
-          </View>
+          <ErrorState message="Unable to load profile." onRetry={fetchData} />
         )}
         </ContentContainer>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }

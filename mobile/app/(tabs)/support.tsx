@@ -8,14 +8,18 @@ import {
   RefreshControl,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { apiFetch } from '../../services/api'
+import { useToast } from '../../contexts/ToastContext'
 import { QUERY_CATEGORIES } from '../../shared'
 import type { FAQ, Query } from '../../shared'
 import { colors, spacing, fontSize, borderRadius, elementSize } from '../../constants/theme'
 import ContentContainer from '../../components/ContentContainer'
+import { useAppResume } from '../../hooks/useAppResume'
 import { contentPadding } from '../../constants/responsive'
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
@@ -26,6 +30,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
 }
 
 export default function SupportScreen() {
+  const { showToast } = useToast()
   const [tab, setTab] = useState<'faqs' | 'queries'>('faqs')
   const [faqs, setFaqs] = useState<FAQ[]>([])
   const [search, setSearch] = useState('')
@@ -64,6 +69,11 @@ export default function SupportScreen() {
     if (tab === 'queries') fetchQueries()
   }, [tab, fetchQueries])
 
+  const handleResume = useCallback(() => {
+    if (tab === 'queries') fetchQueries()
+  }, [tab, fetchQueries])
+  useAppResume(handleResume)
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     if (tab === 'faqs') {
@@ -86,6 +96,7 @@ export default function SupportScreen() {
       setSubmitted(true)
       setMessage('')
       setQueries([])
+      showToast('Query submitted!')
     } catch (err) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to submit query')
     } finally {
@@ -120,6 +131,10 @@ export default function SupportScreen() {
         </TouchableOpacity>
       </View>
 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.scroll}
+      >
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -298,6 +313,7 @@ export default function SupportScreen() {
         <View style={{ height: spacing['2xl'] }} />
         </ContentContainer>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }

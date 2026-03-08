@@ -14,7 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.healeasy.app"
+      "bundleIdentifier": "com.healeasy.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "HealEasy needs camera access for profile photos.",
+        "UIBackgroundModes": ["remote-notification"]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,14 +27,25 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.healeasy.app"
+      "package": "com.healeasy.app",
+      "permissions": [
+        "NOTIFICATIONS",
+        "VIBRATE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#16a34a"
+        }
+      ]
     ]
   }
 }

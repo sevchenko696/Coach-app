@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native'
 import { apiFetch } from '../services/api'
+import { hapticLight, hapticSuccess } from '../services/haptics'
+import { useToast } from '../contexts/ToastContext'
 import { MOOD_EMOJIS, MOOD_LABELS, ENERGY_LABELS, DIET_OPTIONS } from '../shared'
 import type { DailyCheckin } from '../shared'
 import { colors, spacing, fontSize, borderRadius, elementSize } from '../constants/theme'
@@ -13,6 +15,7 @@ interface Props {
 }
 
 export default function CheckinForm({ currentDay, existing, onSaved }: Props) {
+  const { showToast } = useToast()
   const [mode, setMode] = useState<'view' | 'edit'>(existing ? 'view' : 'edit')
   const [mood, setMood] = useState(existing?.mood || 0)
   const [energy, setEnergy] = useState(existing?.energy || 0)
@@ -39,6 +42,8 @@ export default function CheckinForm({ currentDay, existing, onSaved }: Props) {
       })
       onSaved(data.checkin)
       setMode('view')
+      showToast('Check-in saved!')
+      hapticSuccess()
     } catch (err) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to save check-in')
     } finally {
@@ -79,7 +84,10 @@ export default function CheckinForm({ currentDay, existing, onSaved }: Props) {
           <TouchableOpacity
             key={i}
             style={[styles.emojiBtn, mood === i + 1 && styles.emojiBtnActive]}
-            onPress={() => setMood(i + 1)}
+            onPress={() => { setMood(i + 1); hapticLight() }}
+            accessibilityRole="button"
+            accessibilityLabel={`Mood: ${MOOD_LABELS[i]}`}
+            accessibilityState={{ selected: mood === i + 1 }}
           >
             <Text style={styles.emoji}>{emoji}</Text>
             <Text style={styles.emojiLabel}>{MOOD_LABELS[i]}</Text>
@@ -94,7 +102,10 @@ export default function CheckinForm({ currentDay, existing, onSaved }: Props) {
           <TouchableOpacity
             key={i}
             style={[styles.energyBtn, energy === i + 1 && styles.energyBtnActive]}
-            onPress={() => setEnergy(i + 1)}
+            onPress={() => { setEnergy(i + 1); hapticLight() }}
+            accessibilityRole="button"
+            accessibilityLabel={`Energy: ${label}, level ${i + 1}`}
+            accessibilityState={{ selected: energy === i + 1 }}
           >
             <Text style={styles.energyNum}>{i + 1}</Text>
             <Text style={styles.energyLabel}>{label}</Text>
@@ -109,7 +120,10 @@ export default function CheckinForm({ currentDay, existing, onSaved }: Props) {
           <TouchableOpacity
             key={opt.value}
             style={[styles.dietBtn, diet === opt.value && styles.dietBtnActive]}
-            onPress={() => setDiet(opt.value)}
+            onPress={() => { setDiet(opt.value); hapticLight() }}
+            accessibilityRole="button"
+            accessibilityLabel={`Diet: ${opt.label}`}
+            accessibilityState={{ selected: diet === opt.value }}
           >
             <Text>{opt.emoji}</Text>
             <Text style={styles.dietLabel}>{opt.label}</Text>

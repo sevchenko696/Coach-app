@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { AuthUser, login as authLogin, logout as authLogout, validateSession } from '../services/auth'
+import { registerForPushNotifications, savePushToken, removePushToken } from '../services/notifications'
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 
@@ -16,6 +17,15 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [user, setUser] = useState<AuthUser | null>(null)
+  const pushTokenRef = useRef<string | null>(null)
+
+  const setupPushNotifications = useCallback(async () => {
+    const token = await registerForPushNotifications()
+    if (token) {
+      pushTokenRef.current = token
+      await savePushToken(token)
+    }
+  }, [])
 
   const checkSession = useCallback(async () => {
     const sessionUser = await validateSession()
@@ -32,6 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession()
   }, [checkSession])
 
+  // Register for push notifications when authenticated
+  useEffect(() => {
+    if (status === 'authenticated') {
+      setupPushNotifications()
+    }
+  }, [status, setupPushNotifications])
+
   const login = useCallback(async (phone: string, password: string) => {
     const result = await authLogin(phone, password)
     setUser(result.user)
@@ -40,6 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
+    // Remove push token before logging out
+    if (pushTokenRef.current) {
+      await removePushToken(pushTokenRef.current)
+      pushTokenRef.current = null
+    }
     await authLogout()
     setUser(null)
     setStatus('unauthenticated')

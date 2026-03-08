@@ -25,6 +25,9 @@ import {
 import type { DailyContent, DailyCheckin, Announcement } from '../../shared'
 import { colors, spacing, fontSize, borderRadius, elementSize } from '../../constants/theme'
 import ContentContainer from '../../components/ContentContainer'
+import { DashboardSkeleton } from '../../components/Skeleton'
+import ErrorState from '../../components/ErrorState'
+import { useAppResume } from '../../hooks/useAppResume'
 import { contentPadding } from '../../constants/responsive'
 
 interface UserData {
@@ -40,6 +43,7 @@ export default function DashboardScreen() {
   const router = useRouter()
   const { user: authUser } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [content, setContent] = useState<DailyContent[]>([])
@@ -59,6 +63,7 @@ export default function DashboardScreen() {
 
   const fetchData = useCallback(async () => {
     try {
+      setError(false)
       const [meRes, contentRes, viewsRes, checkinsRes, announcementsRes, queriesRes] = await Promise.all([
         apiFetch<{ user: UserData }>('/api/auth/me'),
         apiFetch<{ content: DailyContent[] }>('/api/content'),
@@ -75,7 +80,7 @@ export default function DashboardScreen() {
       setUnreadQueries(queriesRes.unreadCount || 0)
     } catch (err) {
       if (err instanceof Error && err.message !== 'Unauthorized') {
-        Alert.alert('Error', 'Failed to load dashboard data')
+        setError(true)
       }
     } finally {
       setLoading(false)
@@ -83,6 +88,7 @@ export default function DashboardScreen() {
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useAppResume(fetchData)
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -92,10 +98,36 @@ export default function DashboardScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.headerLogo}>
+              <Text style={styles.headerLogoText}>H</Text>
+            </View>
+            <Text style={styles.headerTitle}>HealEasy</Text>
+          </View>
         </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+          <ContentContainer>
+            <DashboardSkeleton />
+          </ContentContainer>
+        </ScrollView>
+      </SafeAreaView>
+    )
+  }
+
+  if (error && !userData) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.headerLogo}>
+              <Text style={styles.headerLogoText}>H</Text>
+            </View>
+            <Text style={styles.headerTitle}>HealEasy</Text>
+          </View>
+        </View>
+        <ErrorState message="Failed to load dashboard data." onRetry={fetchData} />
       </SafeAreaView>
     )
   }
@@ -146,6 +178,13 @@ export default function DashboardScreen() {
             <Ionicons name="trophy" size={28} color="#fff" />
             <Text style={styles.completeTitle}>Congratulations, {userData?.name}!</Text>
             <Text style={styles.completeSubtext}>You've completed the 12-day L1 Detox Program!</Text>
+            <TouchableOpacity
+              style={styles.certBtn}
+              onPress={() => router.push('/certificate')}
+            >
+              <Ionicons name="ribbon-outline" size={16} color={colors.primary} />
+              <Text style={styles.certBtnText}>View Certificate</Text>
+            </TouchableOpacity>
           </View>
         ) : batch && hasStarted ? (
           <View style={styles.batchCard}>
@@ -318,6 +357,18 @@ const styles = StyleSheet.create({
   },
   completeTitle: { fontSize: fontSize.lg, fontWeight: '700', color: '#fff' },
   completeSubtext: { fontSize: fontSize.sm, color: '#bbf7d0' },
+  certBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.sm,
+  },
+  certBtnText: { fontSize: fontSize.sm, fontWeight: '600', color: colors.primary },
   batchCard: {
     backgroundColor: colors.primary,
     borderRadius: borderRadius.lg,

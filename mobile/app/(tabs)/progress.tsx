@@ -21,6 +21,9 @@ import {
 import type { DailyCheckin } from '../../shared'
 import { colors, spacing, fontSize, borderRadius, elementSize } from '../../constants/theme'
 import ContentContainer from '../../components/ContentContainer'
+import { ProgressSkeleton } from '../../components/Skeleton'
+import ErrorState from '../../components/ErrorState'
+import { useAppResume } from '../../hooks/useAppResume'
 import { contentPadding, ms, SCREEN_WIDTH, MAX_CONTENT_WIDTH } from '../../constants/responsive'
 
 interface UserData {
@@ -29,6 +32,7 @@ interface UserData {
 
 export default function ProgressScreen() {
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [checkins, setCheckins] = useState<DailyCheckin[]>([])
   const [viewedDays, setViewedDays] = useState<number[]>([])
@@ -37,6 +41,7 @@ export default function ProgressScreen() {
 
   const fetchData = useCallback(async () => {
     try {
+      setError(false)
       const [meRes, checkinsRes, viewsRes] = await Promise.all([
         apiFetch<{ user: UserData & { name: string } }>('/api/auth/me'),
         apiFetch<{ checkins: DailyCheckin[] }>('/api/checkins'),
@@ -48,13 +53,14 @@ export default function ProgressScreen() {
       const day = meRes.user.batches?.start_date ? getCurrentDay(meRes.user.batches.start_date) : 0
       setCurrentDay(day)
     } catch {
-      // silent
+      setError(true)
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useAppResume(fetchData)
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -91,9 +97,9 @@ export default function ProgressScreen() {
       >
         <ContentContainer>
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading...</Text>
-          </View>
+          <ProgressSkeleton />
+        ) : error ? (
+          <ErrorState message="Failed to load progress data." onRetry={fetchData} />
         ) : (
           <>
             {/* Stats cards */}

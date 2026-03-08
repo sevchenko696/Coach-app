@@ -15,17 +15,23 @@ import { Ionicons } from '@expo/vector-icons'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { apiFetch } from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
+import { hapticSuccess } from '../../services/haptics'
 import { PROGRAM_DAYS } from '../../shared'
 import type { DailyContent, Review } from '../../shared'
 import { colors, spacing, fontSize, borderRadius, elementSize } from '../../constants/theme'
 import ContentContainer from '../../components/ContentContainer'
+import { DayDetailSkeleton } from '../../components/Skeleton'
+import ErrorState from '../../components/ErrorState'
 import { contentPadding } from '../../constants/responsive'
 
 export default function DayDetailScreen() {
   const { day } = useLocalSearchParams<{ day: string }>()
   const dayNumber = parseInt(day, 10)
   const { user } = useAuth()
+  const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [content, setContent] = useState<DailyContent | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
@@ -42,6 +48,7 @@ export default function DayDetailScreen() {
 
   const fetchData = useCallback(async () => {
     try {
+      setError(false)
       const [contentRes, reviewsRes] = await Promise.all([
         apiFetch<{ content: DailyContent }>(`/api/content/${dayNumber}`),
         apiFetch<{ reviews: Review[] }>(`/api/reviews?day=${dayNumber}`),
@@ -57,8 +64,8 @@ export default function DayDetailScreen() {
         method: 'POST',
         body: JSON.stringify({ day_number: dayNumber }),
       }).catch(() => {})
-    } catch (err) {
-      Alert.alert('Error', 'Failed to load day content')
+    } catch {
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -85,6 +92,8 @@ export default function DayDetailScreen() {
         const without = prev.filter(r => r.user_id !== user?.id)
         return [data.review, ...without]
       })
+      showToast('Review shared!')
+      hapticSuccess()
     } catch (err) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to submit review')
     } finally {
@@ -111,9 +120,9 @@ export default function DayDetailScreen() {
       >
         <ContentContainer>
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading...</Text>
-          </View>
+          <DayDetailSkeleton />
+        ) : error ? (
+          <ErrorState message="Failed to load day content." onRetry={fetchData} />
         ) : (
           <>
             {/* Day header */}
