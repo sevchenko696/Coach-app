@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Share,
-  Platform,
 } from 'react-native'
 import { Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'

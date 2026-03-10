@@ -22,7 +22,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState('')
   const [type, setType] = useState<ToastType>('success')
   const [visible, setVisible] = useState(false)
-  const translateY = useRef(new Animated.Value(-100)).current
+  const translateYRef = useRef(new Animated.Value(-100))
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const showToast = useCallback((msg: string, toastType: ToastType = 'success') => {
@@ -32,7 +32,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setType(toastType)
     setVisible(true)
 
-    Animated.spring(translateY, {
+    Animated.spring(translateYRef.current, {
       toValue: 0,
       useNativeDriver: true,
       tension: 80,
@@ -40,13 +40,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }).start()
 
     timeoutRef.current = setTimeout(() => {
-      Animated.timing(translateY, {
+      Animated.timing(translateYRef.current, {
         toValue: -100,
         duration: 300,
         useNativeDriver: true,
       }).start(() => setVisible(false))
     }, 3000)
-  }, [translateY])
+  }, [])
 
   const toastColors = TOAST_COLORS[type]
 
@@ -60,7 +60,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             {
               top: insets.top + spacing.sm,
               backgroundColor: toastColors.bg,
-              transform: [{ translateY }],
+              transform: [{ translateY: translateYRef.current }],
             },
           ]}
         >

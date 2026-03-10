@@ -11,9 +11,10 @@ export function unauthorized() {
   return errorResponse('Unauthorized', 401)
 }
 
-/** Convert a Supabase error into a 500 response */
+/** Convert a Supabase error into a 500 response (logs detail server-side, returns generic message to client) */
 export function dbError(error: { message: string }) {
-  return errorResponse(error.message, 500)
+  console.error('[DB Error]', error.message)
+  return errorResponse('An internal error occurred. Please try again later.', 500)
 }
 
 /** Require admin auth — returns admin payload or a 401 response */

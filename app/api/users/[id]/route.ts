@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getCurrentAdmin, getCurrentUser } from '@/lib/auth'
-import { requireAdmin, isErrorResponse, dbError, unauthorized } from '@/lib/api'
+import { requireAdmin, isErrorResponse, dbError, unauthorized, errorResponse } from '@/lib/api'
 import { normalizePhone } from '@/lib/phone'
+import { updateUserSchema, formatZodError } from '@/lib/validations'
 import bcrypt from 'bcryptjs'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -14,25 +15,26 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return unauthorized()
   }
 
-  const body = await req.json()
+  const parsed = updateUserSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return errorResponse(formatZodError(parsed.error), 400)
+  }
+
+  const body = parsed.data
   const updates: Record<string, string> = {}
 
   if (body.name) updates.name = body.name.trim()
   if (body.phone && admin) {
     const normalized = normalizePhone(body.phone)
     if (!normalized) {
-      return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
+      return errorResponse('Invalid phone number', 400)
     }
     updates.phone = normalized
   }
-  if (body.batch_id !== undefined && admin) updates.batch_id = body.batch_id
+  if (body.batch_id !== undefined && admin) updates.batch_id = body.batch_id as string
 
   if (body.password) {
-    const trimmed = body.password.trim()
-    if (trimmed.length < 4) {
-      return NextResponse.json({ error: 'Password must be at least 4 characters' }, { status: 400 })
-    }
-    updates.password = await bcrypt.hash(trimmed, 10)
+    updates.password = await bcrypt.hash(body.password.trim(), 10)
   }
 
   if (body.reset_password && admin) {

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { requireAdmin, requireUser, isErrorResponse, dbError } from '@/lib/api'
+import { requireAdmin, requireUser, isErrorResponse, dbError, errorResponse } from '@/lib/api'
 import { sendQueryNotification } from '@/lib/email'
+import { createQuerySchema, formatZodError } from '@/lib/validations'
 
 export async function GET() {
   const auth = await requireAdmin()
@@ -20,10 +21,12 @@ export async function POST(req: NextRequest) {
   const user = await requireUser()
   if (isErrorResponse(user)) return user
 
-  const { category, message } = await req.json()
-  if (!category || !message?.trim()) {
-    return NextResponse.json({ error: 'Category and message are required' }, { status: 400 })
+  const parsed = createQuerySchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return errorResponse(formatZodError(parsed.error), 400)
   }
+
+  const { category, message } = parsed.data
 
   const { data, error } = await supabaseAdmin
     .from('queries')

@@ -17,9 +17,13 @@ CREATE TABLE users (
   name TEXT NOT NULL,
   phone TEXT NOT NULL UNIQUE,
   dob DATE NOT NULL,
+  password TEXT,
   batch_id UUID REFERENCES batches(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration: Add password column to existing users table
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT;
 
 -- Daily content table (global, same across all batches)
 CREATE TABLE daily_content (

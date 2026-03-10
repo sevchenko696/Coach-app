@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import {
   View,
   Text,
@@ -69,13 +69,13 @@ export default function OnboardingScreen() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const flatListRef = useRef<FlatList>(null)
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index != null) {
       setCurrentIndex(viewableItems[0].index)
     }
-  }).current
+  }, [])
 
-  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 })
 
   function handleNext() {
     hapticLight()
@@ -131,7 +131,7 @@ export default function OnboardingScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
+        viewabilityConfig={viewabilityConfig.current}
       />
 
       {/* Dots + Button */}

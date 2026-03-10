@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { requireUser, isErrorResponse, dbError } from '@/lib/api'
+import { requireUser, isErrorResponse, dbError, errorResponse } from '@/lib/api'
+import { createCheckinSchema, formatZodError } from '@/lib/validations'
 
 export async function GET() {
   const user = await requireUser()
@@ -20,17 +21,12 @@ export async function POST(req: NextRequest) {
   const user = await requireUser()
   if (isErrorResponse(user)) return user
 
-  const { day_number, mood, energy, diet_compliance, notes } = await req.json()
+  const parsed = createCheckinSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return errorResponse(formatZodError(parsed.error), 400)
+  }
 
-  if (!day_number || !mood || !energy || !diet_compliance) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-  }
-  if (mood < 1 || mood > 5 || energy < 1 || energy > 5) {
-    return NextResponse.json({ error: 'Mood and energy must be between 1-5' }, { status: 400 })
-  }
-  if (!['yes', 'partially', 'no'].includes(diet_compliance)) {
-    return NextResponse.json({ error: 'Invalid diet_compliance value' }, { status: 400 })
-  }
+  const { day_number, mood, energy, diet_compliance, notes } = parsed.data
 
   const { data, error } = await supabaseAdmin
     .from('daily_checkins')

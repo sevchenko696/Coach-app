@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { requireUser, isErrorResponse, errorResponse } from '@/lib/api'
+import { requireUser, isErrorResponse, errorResponse, dbError } from '@/lib/api'
+import { savePushTokenSchema, deletePushTokenSchema, formatZodError } from '@/lib/validations'
 
 export async function POST(request: NextRequest) {
   const user = await requireUser()
   if (isErrorResponse(user)) return user
 
-  const body = await request.json()
-  const { token, platform } = body
-
-  if (!token || !platform) {
-    return errorResponse('Token and platform are required', 400)
+  const parsed = savePushTokenSchema.safeParse(await request.json())
+  if (!parsed.success) {
+    return errorResponse(formatZodError(parsed.error), 400)
   }
 
-  // Upsert — update if token exists, insert if not
+  const { token, platform } = parsed.data
+
   const { error } = await supabaseAdmin
     .from('push_tokens')
     .upsert(
@@ -21,9 +21,7 @@ export async function POST(request: NextRequest) {
       { onConflict: 'token' }
     )
 
-  if (error) {
-    return errorResponse(error.message, 500)
-  }
+  if (error) return dbError(error)
 
   return NextResponse.json({ success: true })
 }
@@ -32,12 +30,12 @@ export async function DELETE(request: NextRequest) {
   const user = await requireUser()
   if (isErrorResponse(user)) return user
 
-  const body = await request.json()
-  const { token } = body
-
-  if (!token) {
-    return errorResponse('Token is required', 400)
+  const parsed = deletePushTokenSchema.safeParse(await request.json())
+  if (!parsed.success) {
+    return errorResponse(formatZodError(parsed.error), 400)
   }
+
+  const { token } = parsed.data
 
   await supabaseAdmin
     .from('push_tokens')

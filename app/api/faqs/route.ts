@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { requireAdmin, isErrorResponse, dbError } from '@/lib/api'
+import { requireAdmin, isErrorResponse, dbError, errorResponse } from '@/lib/api'
+import { createFaqSchema, formatZodError } from '@/lib/validations'
 
 export async function GET() {
   const { data, error } = await supabaseAdmin
@@ -16,7 +17,12 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin()
   if (isErrorResponse(auth)) return auth
 
-  const { question, answer, display_order } = await req.json()
+  const parsed = createFaqSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return errorResponse(formatZodError(parsed.error), 400)
+  }
+
+  const { question, answer, display_order } = parsed.data
   const { data, error } = await supabaseAdmin
     .from('faqs')
     .insert({ question, answer, display_order: display_order || 0 })

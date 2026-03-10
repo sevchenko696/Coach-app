@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { requireAuth, requireAdmin, isErrorResponse, dbError } from '@/lib/api'
+import { requireAuth, requireAdmin, isErrorResponse, dbError, errorResponse } from '@/lib/api'
+import { createBatchSchema, formatZodError } from '@/lib/validations'
 
 export async function GET() {
   const auth = await requireAuth()
@@ -20,8 +21,12 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin()
   if (isErrorResponse(auth)) return auth
 
-  const { name, start_date, zoom_link } = await req.json()
-  if (!start_date) return NextResponse.json({ error: 'Start date is required' }, { status: 400 })
+  const parsed = createBatchSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return errorResponse(formatZodError(parsed.error), 400)
+  }
+
+  const { name, start_date, zoom_link } = parsed.data
 
   const { data, error } = await supabaseAdmin
     .from('batches')

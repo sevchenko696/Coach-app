@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { requireAuth, requireUser, isErrorResponse, dbError } from '@/lib/api'
+import { requireAuth, requireUser, isErrorResponse, dbError, errorResponse } from '@/lib/api'
+import { createReviewSchema, formatZodError } from '@/lib/validations'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth()
@@ -25,10 +26,12 @@ export async function POST(req: NextRequest) {
   const user = await requireUser()
   if (isErrorResponse(user)) return user
 
-  const { day_number, content } = await req.json()
-  if (!day_number || !content?.trim()) {
-    return NextResponse.json({ error: 'Day and content are required' }, { status: 400 })
+  const parsed = createReviewSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return errorResponse(formatZodError(parsed.error), 400)
   }
+
+  const { day_number, content } = parsed.data
 
   const { data: existing } = await supabaseAdmin
     .from('reviews')

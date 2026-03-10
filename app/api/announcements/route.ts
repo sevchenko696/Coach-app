@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { requireAdmin, isErrorResponse, dbError } from '@/lib/api'
+import { requireAdmin, isErrorResponse, dbError, errorResponse } from '@/lib/api'
+import { createAnnouncementSchema, formatZodError } from '@/lib/validations'
 
 export async function GET() {
   const { data, error } = await supabaseAdmin
@@ -17,10 +18,12 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin()
   if (isErrorResponse(auth)) return auth
 
-  const { title, message } = await req.json()
-  if (!title?.trim() || !message?.trim()) {
-    return NextResponse.json({ error: 'Title and message are required' }, { status: 400 })
+  const parsed = createAnnouncementSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return errorResponse(formatZodError(parsed.error), 400)
   }
+
+  const { title, message } = parsed.data
 
   const { data, error } = await supabaseAdmin
     .from('announcements')

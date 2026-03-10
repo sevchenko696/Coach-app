@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { requireAdmin, requireUser, isErrorResponse, dbError } from '@/lib/api'
-import { PROGRAM_DAYS } from '@/lib/constants'
+import { requireAdmin, requireUser, isErrorResponse, dbError, errorResponse } from '@/lib/api'
+import { createContentViewSchema, formatZodError } from '@/lib/validations'
 
 export async function GET() {
   const auth = await requireAdmin()
@@ -19,10 +19,12 @@ export async function POST(req: NextRequest) {
   const user = await requireUser()
   if (isErrorResponse(user)) return user
 
-  const { day_number } = await req.json()
-  if (!day_number || day_number < 1 || day_number > PROGRAM_DAYS) {
-    return NextResponse.json({ error: 'Invalid day number' }, { status: 400 })
+  const parsed = createContentViewSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return errorResponse(formatZodError(parsed.error), 400)
   }
+
+  const { day_number } = parsed.data
 
   const { error } = await supabaseAdmin
     .from('content_views')
